@@ -1,0 +1,125 @@
+1. Instalar SAMBA y habilitar el servicio
+
+sudo dnf install samba samba-client samba-common -y
+
+2. habilita e inicia el servicio de SAMBA
+sudo systemctl enable smb
+sudo systemctl start smb
+sudo systemctl status smb
+
+2. Crear la Carpeta Compartida, Usuarios y Grupos; y asignar permisos
+sudo mkdir -p /srv/samba/fileserver
+
+ls -R /srv/samba/
+
+b) Crear el grupo de usuarios para SAMBA
+sudo groupadd sambausers
+
+Asignar propiedad y permisos a la carpeta
+sudo chown -R nobody:sambausers /srv/samba/fileserver
+sudo chmod 2770 /srv/samba/fileserver
+
+d) Crear el usuario para SAMBA y agregarlo al grupo
+sudo useradd adrian
+sudo usermod  -aG sambausers adrian
+sudo smbpasswd -a adrian
+
+
+
+sudo nano /etc/samba/smb.conf
+
+[global]
+   workgroup = WORKGROUP
+   security = user
+   map to guest = bad user
+   log file = /var/log/samba/%m.log
+   max log size = 50
+
+[Fileserver]
+   comment = Carpeta compartida para Windows
+   path = /srv/samba/fileserver
+   browsable = yes
+   writable = yes
+   guest ok = no
+   valid users = @sambausers
+   create mask = 0660
+   directory mask = 0770
+
+
+cd /srv/samba/fileserver
+
+
+for i in {1..100}; do sudo sh -c "echo 'Archivo adrian$i' > /srv/samba/fileserver/adrian$i.txt"; done
+(también se puede con un touch <nombre>{1..100}.txt)
+
+ls -l /srv/samba/fileserver
+
+
+\\<IP_DEL_SERVIDOR>\Fileserver
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Parte 1: En el servidor NFS (Linux)
+sudo yum install nfs-utils -y
+
+
+Habilitar y arrancar el servicio NFS
+sudo systemctl enable nfs-server
+sudo systemctl start nfs-server
+sudo systemctl status nfs-server
+
+
+
+Paso 2: Crear el directorio a compartir
+sudo mkdir -p /srv/nfs/OS3
+
+
+Crear los 100 archivos dentro del directorio
+for i in {1..100}; do echo "Contenido del archivo Adrian$i" > /srv/nfs/OS3/Adrian$i.txt; done
+(también se puede con un touch <nombre>{1..100}.txt)
+
+
+Paso 3: Configurar las exportaciones NFS
+Editar el archivo de exportaciones
+sudo nano /etc/exports
+/srv/nfs/OS3 192.168.100.0/24(rw,sync,no_root_squash)
+
+
+Recargar las exportaciones NFS
+a
+
+Paso 4: Configurar el firewall
+sudo firewall-cmd --add-service=nfs --permanent
+sudo firewall-cmd --reload
+
+
+
+Parte 2: En el cliente NFS (Linux)
+
+Paso 1: Instalar NFS Client
+sudo yum install nfs-utils -y
+
+
+Paso 2: Crear el punto de montaje
+sudo mkdir -p /mnt/nfs
+
+
+sudo mount -t nfs 192.168.100.170:/srv/nfs/OS3 /mnt/nfs
+
+
+
+Paso 4: Verificar el montaje
+ls /mnt/nfs
+
+
+Paso 5: Configurar el montaje automático en el arranque
+192.168.100.170:/srv/nfs/OS3 /mnt/nfs nfs defaults 0 0
+
+sudo reboot
