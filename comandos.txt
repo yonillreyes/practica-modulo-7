@@ -1,125 +1,541 @@
-1. Instalar SAMBA y habilitar el servicio
 
-sudo dnf install samba samba-client samba-common -y
+Practica Modulo VII:
 
-2. habilita e inicia el servicio de SAMBA
-sudo systemctl enable smb
-sudo systemctl start smb
+Para esta practica se necesitaran 2 maquinas virtuales: en modo Bridge o Host-Only 
+
+VM server (su Distro)
+VM linux Cliente
+VM Windows 10 (o mini Windows 10) https://www.mediafire.com/file/a3ezklqb1og2omx/MiniOS10%20Pro%20v2023.06.1%20x64%20-%20www.dprojects.org.rar/file
+Contrasena para descomprimir el miniWindowsOS: www.dprojects.org
+
+Nota: Crear un snapshot de su VM antes de iniciar la realizacion de estas practicas
+
+Practica 1: compartir archivos entre linux utilizando NFS (1pts)
+
+Instale NFS en el servidor, cree un directorio llamado OS3 que contenga 100 archivos dentro llamados Adrian [1..100].txt que sera el directorio que se utilizara para compartir
+Asigne los permisos de carpeta y de usuario para que pueda ser acesible por otros usuarios 
+Configure los exports para definer que directorios y con que permisos seran compartidos
+En la maquina Linux cliente instale el cliente de NFS, y monte el directorio compartido desde el servidor NFS
+agrega una entrada en el archivo /etc/fstab para que el directorio compartido se monte desde que se reinicie la pc (muestre la prueba de que funciona visualizando los archivos en la VM cliente y luego reiniciando la VM y mostrando como se monta automaticamente al subir el Sistema)
+
+Practica 2: Creacion de fileserver compatible con Windows utilizando SAMBA (1Pts)
+
+Instalar SAMBA y habilitar el servicio
+Crear Carpeta Compartida, Crear Usuarios y Grupos y dar los permisos necesarios a la carpeta compartida
+En la carpata de Samba crear 100 archivos llamados adrian(adrian1, adrian2.....adrian100)
+En el sistema Windows, mapear un nuevo disco virtual y especificar la carpeta de samba como disco virtual donde se visualisaran los 100 archivos
+ingresar al archivo Adrian99 desde el disco mapeado en windows y agregar la frase "el zumzum de la carabela", guardar y regresar a la carpeta desde linux y validar que la modificacion se hara realizado satisfactoriamente. 
+
+Practica 3: Creacion de controlador de Dominio con cliente Windows (2Pts)
+
+Crea un usuario en Linux llamado lanegracubana, como contrasena su matricula y agregarlo a samba
+Crear un dominio en samba4 llamado SO3.inet
+Agregar la VM de Windows al dominio con SAMBA y que autentique con el usuario creado en el punto anterior
+
+
+
+
+
+
+
+
+
+
+
+
+practica 1:
+
+
+ Parte 1: Configuración del Servidor NFS
+
+1. Instalar el paquete NFS
+En el servidor, instala el paquete nfs-utils:​
+
+sudo dnf install nfs-utils
+2. Crear el directorio y los archivos
+Crea el directorio OS3 y genera 100 archivos llamados Adrian[1..100].txt:​
+
+mkdir -p /srv/nfs/OS3
+cd /srv/nfs/OS3
+touch adrian{1.100}
+
+3. Asignar permisos
+Establece los permisos adecuados para que otros usuarios puedan acceder al directorio:​
+
+
+chmod -R 755 /srv/nfs/OS3
+
+
+4. Configurar las exportaciones
+Edita el archivo /etc/exports para definir qué directorios se compartirán y con qué permisos:​
+
+
+sudo nano /etc/exports
+
+
+Agrega la siguiente línea (reemplaza 192.168.100.0/24 con la red de tus clientes):​
+
+
+/srv/nfs/OS3 192.168.100.0/24(rw,sync,no_root_squash)
+
+Guarda y cierra el archivo.​
+
+
+
+5. Aplicar la configuración y habilitar el servicio NFS
+Aplica las exportaciones y habilita el servicio NFS:​
+
+
+sudo exportfs -a
+sudo systemctl enable --now nfs-server
+
+
+Verifica que el directorio se esté exportando correctamente:​
+
+
+sudo exportfs -v
+
+
+
+
+Parte 2: Configuración del Cliente NFS (otro linux)
+
+
+1. Instalar el cliente NFS
+En la máquina cliente, instala el paquete nfs-utils:​
+
+sudo dnf install nfs-utils
+
+
+2. Crear el punto de montaje
+Crea el directorio donde se montará el recurso compartido:​
+
+sudo mkdir -p /mnt/OS3
+
+
+3. Montar el recurso compartido
+Monta el directorio compartido desde el servidor (reemplaza 192.168.100.10 con la IP de tu servidor):​
+
+sudo mount -t nfs 192.168.100.10:/srv/nfs/OS3 /mnt/OS3
+
+
+Verifica que los archivos estén accesibles:​
+
+ls /mnt/OS3
+
+
+4. Configurar el montaje automático al iniciar el sistema
+Edita el archivo /etc/fstab para que el recurso compartido se monte automáticamente al iniciar:​
+
+
+sudo nano /etc/fstab
+
+Agrega la siguiente línea al final del archivo:​
+
+
+192.168.100.10:/srv/nfs/OS3 /mnt/OS3 nfs defaults,_netdev 0 0
+
+
+Guarda y cierra el archivo.​
+
+Para probar que la configuración es correcta, desmonta el recurso y utiliza mount -a para montarlo nuevamente:​
+
+
+sudo umount /mnt/OS3
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo mount -a
+
+Verifica que los archivos estén accesibles:​
+
+ls /mnt/OS3
+
+Reinicia la máquina cliente y confirma que el recurso se monta automáticamente:​
+Ask Ubuntu
+
+
+sudo reboot
+
+
+Después de reiniciar, verifica nuevamente:​
+
+
+ls /mnt/OS3
+
+
+
+
+
+---------------------------------------------------------------------------
+
+practica 2:
+
+🛠️ Paso 1: Instalar y habilitar el servicio SAMBA en Oracle Linux 9.5
+
+
+Actualizar el sistema:
+
+
+
+sudo dnf update -y
+
+
+
+
+
+Instalar los paquetes necesarios:
+
+
+
+sudo dnf install -y samba samba-common samba-client
+
+
+
+
+
+Habilitar e iniciar los servicios de SAMBA:
+
+
+
+sudo systemctl enable --now smb
+sudo systemctl enable --now nmb
+
+
+
+Verificar el estado de los servicios:
+
+
 sudo systemctl status smb
+sudo systemctl status nmb
 
-2. Crear la Carpeta Compartida, Usuarios y Grupos; y asignar permisos
-sudo mkdir -p /srv/samba/fileserver
 
-ls -R /srv/samba/
 
-b) Crear el grupo de usuarios para SAMBA
-sudo groupadd sambausers
+📁 Paso 2: Crear carpeta compartida, usuarios y grupos, y asignar permisos
+Crear el directorio compartido:
 
-Asignar propiedad y permisos a la carpeta
-sudo chown -R nobody:sambausers /srv/samba/fileserver
-sudo chmod 2770 /srv/samba/fileserver
 
-d) Crear el usuario para SAMBA y agregarlo al grupo
-sudo useradd adrian
-sudo usermod  -aG sambausers adrian
+
+sudo mkdir -p /srv/samba/compartida
+
+
+
+
+Crear un grupo para los usuarios de SAMBA:
+
+
+sudo groupadd sambagrupo
+
+
+
+Crear un usuario y agregarlo al grupo:
+
+
+sudo useradd -M -s /sbin/nologin adrian
+sudo passwd adrian
+sudo usermod -aG sambagrupo adrian
+
+
+
+Agregar el usuario a la base de datos de SAMBA:
+
+
 sudo smbpasswd -a adrian
+
+
+Asignar permisos al directorio compartido:
+
+sudo chown -R :sambagrupo /srv/samba/compartida
+sudo chmod -R 2770 /srv/samba/compartida
+
+
+
+El permiso 2770 asegura que los archivos creados dentro del directorio hereden el grupo y que solo los miembros del grupo tengan acceso.
+
+
+
+
+
+📝 Paso 3: Crear 100 archivos llamados adrian1.txt a adrian100.txt
+Generar los archivos:
+
+
+
+
+for i in {1..100}; do
+    touch /srv/samba/compartida/adrian$i.txt
+done
+
+
+
+
+⚙️ Paso 4: Configurar SAMBA para compartir la carpeta
+Editar el archivo de configuración de SAMBA:
 
 
 
 sudo nano /etc/samba/smb.conf
 
-[global]
-   workgroup = WORKGROUP
-   security = user
-   map to guest = bad user
-   log file = /var/log/samba/%m.log
-   max log size = 50
-
-[Fileserver]
-   comment = Carpeta compartida para Windows
-   path = /srv/samba/fileserver
-   browsable = yes
-   writable = yes
-   guest ok = no
-   valid users = @sambausers
-   create mask = 0660
-   directory mask = 0770
-
-
-cd /srv/samba/fileserver
-
-
-for i in {1..100}; do sudo sh -c "echo 'Archivo adrian$i' > /srv/samba/fileserver/adrian$i.txt"; done
-(también se puede con un touch <nombre>{1..100}.txt)
-
-ls -l /srv/samba/fileserver
-
-
-\\<IP_DEL_SERVIDOR>\Fileserver
 
 
 
 
 
+Agregar la siguiente configuración al final del archivo:
+
+ini
+Copiar
+Editar
+[compartida]
+path = /srv/samba/compartida
+valid users = @sambagrupo
+guest ok = no
+writable = yes
+browsable = yes
 
 
 
-------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-Parte 1: En el servidor NFS (Linux)
-sudo yum install nfs-utils -y
 
 
-Habilitar y arrancar el servicio NFS
-sudo systemctl enable nfs-server
-sudo systemctl start nfs-server
-sudo systemctl status nfs-server
+Verificar la configuración:
+
+sudo testparm
 
 
 
-Paso 2: Crear el directorio a compartir
-sudo mkdir -p /srv/nfs/OS3
+
+Reiniciar el servicio de SAMBA para aplicar los cambios:
 
 
-Crear los 100 archivos dentro del directorio
-for i in {1..100}; do echo "Contenido del archivo Adrian$i" > /srv/nfs/OS3/Adrian$i.txt; done
-(también se puede con un touch <nombre>{1..100}.txt)
+sudo systemctl restart smb
 
 
-Paso 3: Configurar las exportaciones NFS
-Editar el archivo de exportaciones
-sudo nano /etc/exports
-/srv/nfs/OS3 192.168.100.0/24(rw,sync,no_root_squash)
+
+🔥 Paso 5: Configurar el firewall para permitir el tráfico de SAMBA
+Abrir los puertos necesarios:
 
 
-Recargar las exportaciones NFS
-a
-
-Paso 4: Configurar el firewall
-sudo firewall-cmd --add-service=nfs --permanent
+sudo firewall-cmd --permanent --add-service=samba
 sudo firewall-cmd --reload
 
 
 
-Parte 2: En el cliente NFS (Linux)
 
-Paso 1: Instalar NFS Client
-sudo yum install nfs-utils -y
+🖥️ Paso 6: Acceder a la carpeta compartida desde Windows
+En el sistema Windows:
 
+Abre el Explorador de archivos.
 
-Paso 2: Crear el punto de montaje
-sudo mkdir -p /mnt/nfs
+Haz clic derecho en "Este equipo" y selecciona "Conectar a unidad de red".
 
-
-sudo mount -t nfs 192.168.100.170:/srv/nfs/OS3 /mnt/nfs
+Elige una letra de unidad (por ejemplo, Z:).
 
 
 
-Paso 4: Verificar el montaje
-ls /mnt/nfs
 
 
-Paso 5: Configurar el montaje automático en el arranque
-192.168.100.170:/srv/nfs/OS3 /mnt/nfs nfs defaults 0 0
 
-sudo reboot
+
+
+En la carpeta, ingresa la ruta de red del recurso compartido:
+
+
+\\IP_DEL_SERVIDOR\compartida
+
+
+
+Reemplaza IP_DEL_SERVIDOR con la dirección IP de tu servidor Oracle Linux.
+
+Marca la opción "Conectar usando diferentes credenciales".
+
+Haz clic en "Finalizar".
+
+Cuando se te solicite, ingresa las credenciales:
+
+Usuario: adrian
+
+Contraseña: la que configuraste anteriormente.
+
+
+
+
+
+
+
+✍️ Paso 7: Modificar el archivo Adrian99.txt desde Windows y verificar en Linux
+
+
+
+
+
+Desde Windows:
+
+Navega a la unidad de red que acabas de montar.
+
+Abre el archivo adrian99.txt.
+
+Agrega la frase: el zumzum de la carabela.
+
+Guarda y cierra el archivo.
+
+
+
+
+Desde Oracle Linux:
+
+
+Verifica que el contenido del archivo se haya actualizado:
+
+cat /srv/samba/compartida/adrian99.txt
+
+
+Deberías ver la frase que agregaste desde Windows.
+
+
+
+
+
+---------------------------------------------------------------------------
+
+
+
+
+
+practica 3:
+
+
+
+
+🛠️ Paso 1: Preparativos Iniciales
+1.1 Actualizar el sistema
+
+sudo dnf update -y
+
+
+
+
+1.2 Instalar dependencias necesarias
+
+
+
+sudo dnf groupinstall "Development Tools" -y
+sudo dnf install -y python3 python3-devel gnutls-devel openldap-devel \
+  libattr-devel libacl-devel krb5-devel libarchive-devel \
+  cups-devel pam-devel samba-winbind samba-winbind-clients \
+  samba-winbind-krb5-locator
+
+
+
+
+📦 Paso 2: Descargar y Compilar Samba
+2.1 Descargar el código fuente de Samba
+
+wget https://download.samba.org/pub/samba/stable/samba-4.20.2.tar.gz
+tar -xvzf samba-4.20.2.tar.gz
+cd samba-4.20.2
+
+
+2.2 Configurar la compilación
+
+./configure --enable-debug --enable-selftest
+
+
+
+2.3 Compilar e instalar
+
+make -j$(nproc)
+sudo make install
+
+Esto instalará Samba en /usr/local/samba.​
+
+
+
+
+
+⚙️ Paso 3: Configurar el Entorno
+3.1 Agregar Samba al PATH
+
+echo 'export PATH=/usr/local/samba/bin:/usr/local/samba/sbin:$PATH' | sudo tee -a /etc/profile.d/samba.sh
+source /etc/profile.d/samba.sh
+
+
+
+
+3.2 Establecer el nombre del host
+
+sudo hostnamectl set-hostname dc.so3.inet
+
+
+
+3.3 Configurar el archivo /etc/hosts
+Edita el archivo /etc/hosts y agrega una línea con la IP de tu servidor y su nombre completo:​
+
+192.168.100.10   dc.so3.inet   dc
+
+Reemplaza 192.168.100.10 con la IP estática de tu servidor.​
+
+
+
+
+🏗️ Paso 4: Provisionar el Dominio SO3.inet
+4.1 Provisionar el dominio
+
+sudo /usr/local/samba/bin/samba-tool domain provision --realm=SO3.INET --domain=SO3 --server-role=dc --dns-backend=SAMBA_INTERNAL
+Durante la ejecución, se te solicitará una contraseña para el usuario Administrator.​
+
+
+
+
+
+4.2 Configurar Kerberos
+
+sudo cp /usr/local/samba/private/krb5.conf /etc/krb5.conf
+
+
+
+
+
+🚀 Paso 5: Iniciar Servicios de Samba
+
+sudo /usr/local/samba/sbin/samba
+
+
+
+Para verificar que Samba está en ejecución:​
+
+
+ps aux | grep samba
+
+
+
+
+👤 Paso 6: Crear el Usuario lanegracubana
+
+sudo /usr/local/samba/bin/samba-tool user create lanegracubana TuMatricula123
+Reemplaza TuMatricula123 con la contraseña deseada.​
+
+🖥️ Paso 7: Unir la Máquina Virtual con Windows al Dominio
+7.1 Configurar DNS en Windows
+En la configuración de red de la máquina virtual con Windows, establece como servidor DNS la dirección IP del servidor Samba (por ejemplo, 192.168.100.10).​
+
+7.2 Unir al dominio
+Abre el Panel de Control y navega a Sistema > Configuración avanzada del sistema.
+
+En la pestaña Nombre del equipo, haz clic en Cambiar.
+
+Selecciona Dominio e ingresa SO3.inet.
+
+Cuando se te solicite, proporciona las credenciales del usuario lanegracubana con la contraseña TuMatricula123.
+
+Reinicia la máquina virtual para aplicar los cambios.​
+
+✅ Verificación Final
+Después de reiniciar, inicia sesión en la máquina virtual con las credenciales del dominio:​
+
+Usuario: SO3\lanegracubana
+
+Contraseña: TuMatricula123​
+
+Si todo está configurado correctamente, deberías poder iniciar sesión en el dominio sin problemas.
+
+
+
